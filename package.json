@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "main": "index.js",
   "repository": "git@github.com:AdrianoBiolchi/truck-monitor-backend.git",
-  "author": "Adriano Biolchi <adrianobiolchi@outlook.com> & Gildenir Silvestrin",
+  "author": "Adriano Biolchi <adrianobiolchi@outlook.com> & Gildenir Silvestrin <gildenir.silvestrin@gmail.com>",
   "license": "MIT",
   "scripts": {
     "start": "node src/index.js",
