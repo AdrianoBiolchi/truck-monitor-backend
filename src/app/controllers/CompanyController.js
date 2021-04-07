@@ -24,11 +24,31 @@ class CompanyController {
 
   async show(req, res) {
     try {
-      const company = await Company.findByPk(req.params.id);
 
-      return res.json(company);
+      const { id } = req.params
+
+      const company = await Company.findByPk(id, {
+        attributes: [
+          'id',
+          'name',
+          'cnpj',
+          'ie',
+          'city',
+          'state',
+          'address',
+          'phone',
+          'status',
+          'password'
+        ]
+      })
+
+      if(!company){
+        return res.status(400).json({ message: "Empresa não encontrada."})
+      }
+     
+      return res.status(200).json(company);
     } catch (err) {
-      return res.status(400).json({ error: err.message });
+      return res.status(500).json({ message: "Empresa não cadastrada!" });
     }
   }
 
@@ -69,26 +89,123 @@ class CompanyController {
 
   async update(req, res) {
     try {
-      const company = await Company.findByPk(req.params.id);
+      
+      const { id } = req.params
+      const company = await Company.findByPk(id)
+      
+      if(!company){
+        return res.status(400).json({message: 'Essa empresa não existe.'})
+      }
 
-      await company.update(req.body);
+      if(req.body.cnpj){
+        const cnpjExist = await Company.findOne({
+          where : {
+            cnpj : req.body.cnpj
+          }
+      })  
+      
+      if(cnpjExist && cnpjExist.cnpj !== company.cnpj){
+         return res.status(400).json({message: "CNPJ já cadastrado para outra empresa!"})
+      }
+    }
 
-      return res.json({ company });
-    } catch (err) {
-      return res.status(400).json({ error: err.message });
+      if (req.body.password && req.body.password !== null) {
+          req.body.password = bcrypt.hashSync(req.body.password, saltRounds)
+      }
+
+      Company.update(
+        Object.assign(req.body, {
+          password: req.body.password ? req.body.password : undefined,
+        }),
+        {
+          where: { id: id },
+        }
+      )
+        .then((changed_data, rowsupdated) => {
+          console.log(changed_data, rowsupdated)
+        })
+        .catch((error) => {
+          console.log('error', error)
+        })
+
+        return res
+        .status(200)
+        .json({ message: 'Usuário atualizado com sucesso.' })
+
+    } catch (error) {
+      return res
+        .status(500)
+        .json({ message: 'Não foi possível atualizar o usuário.' })
     }
   }
 
   async destroy(req, res) {
     try {
-      const company = await Company.findByPk(req.params.id);
+
+      const { id } = req.params
+
+      const company = await Company.findByPk(id);
+
+      if(!company) {
+        return res.status(400).json({message: "Essa empresa não existe!"})
+      }
+
+      company.update(Object.assign({status: "inactive"}),{
+        where: {id:id}
+      })
 
       await company.destroy();
 
-      return res.json();
+      return res.status(200).json({message: "Empresa deletada com sucesso."});
     } catch (err) {
-      return res.status(400).json({ error: err.message });
+      return res.status(400).json({ message: "Empŕesa não pode ser deletada." });
     }
+  }
+
+  async login(req, res){
+
+    const {cnpj, password} = req.body
+
+    try {
+      const company = await Company.findOne({
+        where: {
+          cnpj: req.body.cnpj
+        }
+      })
+
+      if(!company){
+        return res.status(400).json({
+          message: "Essa empresa não existe."
+        })
+      }
+
+      const isMatch = await bcrypt.compare(password, company.password)
+
+      if (!isMatch)
+        return res.status(400).json({
+          message: 'Senha incorreta!',
+        })
+
+      const payload = {
+        user: {
+          id: company.id,
+        },
+      }
+
+      const id = company.id
+
+      jwt.sign(payload, process.env.JWT_KEY, (err, token) => {
+        if (err) throw err
+        res.status(200).json({
+          token,
+          id,
+        })
+      })
+
+    } catch (error) {
+      
+    }
+
   }
 }
 
